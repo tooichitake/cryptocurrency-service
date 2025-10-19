@@ -391,7 +391,7 @@ def display_overview():
             showspikes=True,
             spikemode='across+toaxis',
             spikesnap='cursor',
-            spikedash='solid',
+            spikedash='dot',
             spikecolor='rgba(0, 0, 0, 0.5)',
             spikethickness=1
         ),
@@ -407,7 +407,7 @@ def display_overview():
             showspikes=True,
             spikemode='across+toaxis',
             spikesnap='cursor',
-            spikedash='solid',
+            spikedash='dot',
             spikecolor='rgba(0, 0, 0, 0.5)',
             spikethickness=1
         ),
