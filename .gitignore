@@ -4,6 +4,7 @@ fastAPI/
 .claude/
 start_streamlit.ps1
 start_fastapi.ps1
+assignment-requirements.txt
 
 # Python
 __pycache__/
