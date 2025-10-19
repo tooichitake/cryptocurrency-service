@@ -62,7 +62,7 @@ def fetch_crypto_prices():
 
 # ==================== HOME PAGE (Coinbase-style List) ====================
 if st.session_state.selected_crypto is None:
-    st.markdown("## Cryptocurrency Prices")
+    st.markdown("## Cryptocurrencies")
 
     # Fetch real-time prices
     price_data = fetch_crypto_prices()
@@ -301,7 +301,7 @@ st.markdown(f"""
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
     <img src="{selected_info['icon']}" style="width: 48px; height: 48px; border-radius: 50%; background: #F7931A; padding: 4px;" alt="{selected_info['name']}">
     <div style="display: flex; flex-direction: column; gap: 2px;">
-        <span style="font-size: 1.125rem; font-weight: 600; color: #050F19;">{selected_info['name']} Price</span>
+        <span style="font-size: 1.125rem; font-weight: 600; color: #050F19;">{selected_info['name']}</span>
         <span style="font-size: 1.5rem; color: #5B616E; font-weight: 600;">{selected_info['symbol']}</span>
     </div>
 </div>
@@ -311,7 +311,8 @@ st.markdown(f"""
 tabs = st.tabs([
     "Overview",
     "Analysis & Prediction",
-    "Market Insights"
+    "Market Insights",
+    "News"
 ])
 
 # Tab 1: Overview
@@ -354,3 +355,16 @@ with tabs[2]:
             st.info("Market insights and analysis will be displayed here.")
     else:
         st.info("Market insights and analysis will be displayed here.")
+
+# Tab 4: News
+with tabs[3]:
+    student_id = STUDENT_MAPPING.get(crypto_symbol)
+
+    if student_id:
+        try:
+            student_module = __import__(student_id)
+            student_module.display_news()
+        except (ImportError, AttributeError):
+            st.info("Latest cryptocurrency news will be displayed here.")
+    else:
+        st.info("Latest cryptocurrency news will be displayed here.")

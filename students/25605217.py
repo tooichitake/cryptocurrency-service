@@ -17,6 +17,7 @@ import pandas_ta_classic as ta
 # Configuration
 FASTAPI_URL = "https://bitcoin-prediction-api-v951.onrender.com"
 CRYPTOCOMPARE_API = "https://min-api.cryptocompare.com/data/v2/histoday"
+CRYPTOCOMPARE_NEWS_API = "https://min-api.cryptocompare.com/data/v2/news/"
 
 
 @st.cache_data(ttl=300)
@@ -78,6 +79,39 @@ def get_prediction(input_date=None):
         return response.json()
     except requests.exceptions.RequestException as e:
         return None
+
+
+@st.cache_data(ttl=600)
+def fetch_bitcoin_news(limit=20):
+    """
+    Fetch Bitcoin news from CryptoCompare API
+
+    Returns the latest Bitcoin-related news articles.
+    Cache for 10 minutes (600s).
+    """
+    try:
+        response = requests.get(
+            CRYPTOCOMPARE_NEWS_API,
+            params={
+                'lang': 'EN',
+                'categories': 'BTC',
+                'excludeCategories': 'Sponsored'
+            },
+            timeout=10
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        if data.get('Type') == 100:  # Success
+            news_list = data.get('Data', [])[:limit]
+            return news_list
+        else:
+            st.error(f"News API Error: {data.get('Message', 'Unknown error')}")
+            return []
+
+    except Exception as e:
+        st.warning(f"Unable to fetch news: {str(e)}")
+        return []
 
 
 @st.cache_data(ttl=300)
@@ -296,11 +330,23 @@ def display_overview():
     # Market stats row
     col1, col2, col3, col4 = st.columns(4)
 
+    # Calculate changes for stat cards
+    mktcap_change_pct = ((latest['marketCap'] - prev_close * latest['volume']) / (prev_close * latest['volume'])) * 100 if prev_close * latest['volume'] > 0 else 0
+    high_change_pct = ((latest['high'] - prev_close) / prev_close) * 100
+    low_change_pct = ((latest['low'] - prev_close) / prev_close) * 100
+
+    # Calculate volume change
+    prev_volume = df.iloc[-2]['volume']
+    volume_change_pct = ((latest['volume'] - prev_volume) / prev_volume) * 100 if prev_volume > 0 else 0
+
     with col1:
         st.markdown(f"""
         <div class="stat-card">
             <div class="stat-label">Market Cap</div>
             <div class="stat-value">${latest['marketCap']/1e9:.2f}B</div>
+            <div style="color: {'#05B169' if price_change_pct >= 0 else '#DF5060'}; font-size: 0.875rem; margin-top: 4px;">
+                {'↗' if price_change_pct >= 0 else '↘'} {price_change_pct:+.2f}%
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -309,6 +355,9 @@ def display_overview():
         <div class="stat-card">
             <div class="stat-label">24h Volume</div>
             <div class="stat-value">{latest['volume']:,.0f} BTC</div>
+            <div style="color: {'#05B169' if volume_change_pct >= 0 else '#DF5060'}; font-size: 0.875rem; margin-top: 4px;">
+                {'↗' if volume_change_pct >= 0 else '↘'} {volume_change_pct:+.2f}%
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -317,6 +366,9 @@ def display_overview():
         <div class="stat-card">
             <div class="stat-label">24h High</div>
             <div class="stat-value">${latest['high']:,.2f}</div>
+            <div style="color: {'#05B169' if high_change_pct >= 0 else '#DF5060'}; font-size: 0.875rem; margin-top: 4px;">
+                {'↗' if high_change_pct >= 0 else '↘'} {high_change_pct:+.2f}%
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -325,6 +377,9 @@ def display_overview():
         <div class="stat-card">
             <div class="stat-label">24h Low</div>
             <div class="stat-value">${latest['low']:,.2f}</div>
+            <div style="color: {'#05B169' if low_change_pct >= 0 else '#DF5060'}; font-size: 0.875rem; margin-top: 4px;">
+                {'↗' if low_change_pct >= 0 else '↘'} {low_change_pct:+.2f}%
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -365,6 +420,11 @@ def display_overview():
     y_range = y_max - y_min
     y_padding = y_range * 0.1
 
+    # Calculate percentage change from first day in the chart period
+    df_chart['pct_change'] = ((df_chart['close'] - df_chart['close'].iloc[0]) / df_chart['close'].iloc[0]) * 100
+    # Round to 2 decimal places
+    df_chart['pct_change'] = df_chart['pct_change'].round(2)
+
     # Create price chart
     fig = go.Figure()
 
@@ -376,7 +436,8 @@ def display_overview():
         line=dict(color=line_color, width=2.5),
         fill='tonexty',
         fillcolor=fill_color,
-        hovertemplate='<b>%{x|%b %d, %Y}</b><br>$%{y:,.2f}<extra></extra>'
+        customdata=df_chart[['pct_change']].values,
+        hovertemplate='<b>%{x|%b %d, %Y}</b><br>Price: $%{y:,.2f}<br>Change: %{customdata[0]:+.2f}%<extra></extra>'
     ))
 
     fig.update_layout(
@@ -502,7 +563,7 @@ def display_overview():
                 <div class="stat-label">BUYERS</div>
                 <div class="stat-value">{int(buyer_ratio * 1410)}K</div>
                 <div style="color: {'#05B169' if buyer_ratio > 50 else '#DF5060'}; font-size: 0.875rem;">
-                    {'↗' if buyer_ratio > 50 else '↘'} {buyer_ratio:.1f}%
+                    {'↗' if buyer_ratio > 50 else '↘'} {buyer_ratio:.2f}%
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -513,7 +574,7 @@ def display_overview():
                 <div class="stat-label">SELLERS</div>
                 <div class="stat-value">{int((100-buyer_ratio) * 1090)}K</div>
                 <div style="color: {'#DF5060' if buyer_ratio > 50 else '#05B169'}; font-size: 0.875rem;">
-                    {'↘' if buyer_ratio > 50 else '↗'} {(100-buyer_ratio):.1f}%
+                    {'↘' if buyer_ratio > 50 else '↗'} {(100-buyer_ratio):.2f}%
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -633,15 +694,32 @@ def display_analysis_and_prediction():
         st.error("Unable to fetch Bitcoin data")
         return
 
-    # Display data update time (crypto standard format)
+    # Display current price and change (crypto standard format)
     from datetime import timezone
     latest = df.iloc[-1]
+    prev_close = df.iloc[-2]['close']
+    price_change = latest['close'] - prev_close
+    price_change_pct = (price_change / prev_close) * 100
+    is_positive = price_change >= 0
+
     latest_date_utc = pd.to_datetime(latest['date']).tz_localize(timezone.utc)
     data_time_str = latest_date_utc.strftime("%b %d, %Y")
 
+    # Price header with change
+    change_symbol = "▲" if is_positive else "▼"
+    change_class = "price-change-positive" if is_positive else "price-change-negative"
+
     st.markdown(f"""
-    <div style="color: #6B7280; font-size: 0.875rem; margin-bottom: 20px; padding: 8px 12px; background-color: #F9FAFB; border-radius: 6px;">
-        {data_time_str}
+    <div style="margin-bottom: 20px;">
+        <div style="display: flex; align-items: baseline; gap: 16px;">
+            <div style="font-size: 2.5rem; font-weight: 700; color: #050F19;">${latest['close']:,.2f}</div>
+            <div class="{change_class}" style="font-size: 1.25rem;">
+                {change_symbol} ${abs(price_change):,.2f} ({price_change_pct:+.2f}%)
+            </div>
+        </div>
+        <div style="color: #6B7280; font-size: 0.875rem; margin-top: 8px; padding: 8px 12px; background-color: #F9FAFB; border-radius: 6px; display: inline-block;">
+            {data_time_str}
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -757,46 +835,63 @@ def display_analysis_and_prediction():
     # Trim to display period
     df_display = df_calc.tail(days).copy()
 
+    # Calculate percentage change from first day in the display period for each OHLC value
+    first_close = df_display['close'].iloc[0]
+    df_display['open_pct'] = ((df_display['open'] - first_close) / first_close) * 100
+    df_display['high_pct'] = ((df_display['high'] - first_close) / first_close) * 100
+    df_display['low_pct'] = ((df_display['low'] - first_close) / first_close) * 100
+    df_display['close_pct'] = ((df_display['close'] - first_close) / first_close) * 100
+
     # Dynamic subplot configuration based on selected indicators
     # Price chart is always row 1
-    subplot_config = [('Price + Bollinger Bands + SMA + AI', 0.6)]  # Main chart
+    subplot_config = [0.6]  # Main chart height
     row_mapping = {'price': 1}  # Track which row each indicator is in
     current_row = 2
 
     # Add selected indicator subplots
     if show_macd:
-        subplot_config.append(('MACD', 0.15))
+        subplot_config.append(0.15)
         row_mapping['macd'] = current_row
         current_row += 1
 
     if show_rsi:
-        subplot_config.append(('RSI', 0.15))
+        subplot_config.append(0.15)
         row_mapping['rsi'] = current_row
         current_row += 1
 
     if show_volume:
-        subplot_config.append(('Volume', 0.1))
+        subplot_config.append(0.1)
         row_mapping['volume'] = current_row
         current_row += 1
 
     # Calculate total rows and heights
     num_rows = len(subplot_config)
-    row_heights = [h for _, h in subplot_config]
-    subplot_titles = [title for title, _ in subplot_config]
+    row_heights = subplot_config
     specs = [[{"secondary_y": False}] for _ in range(num_rows)]
 
-    # Create dynamic subplot chart
+    # Create dynamic subplot chart (no titles for cleaner professional look)
     fig = make_subplots(
         rows=num_rows,
         cols=1,
         row_heights=row_heights,
         vertical_spacing=0.02,
-        subplot_titles=subplot_titles,
         specs=specs,
         horizontal_spacing=0  # Ensure perfect horizontal alignment
     )
 
     # Row 1: Candlestick + Bollinger Bands + SMAs
+    # Create hover text for candlestick with percentage changes
+    hover_texts = []
+    for idx, row in df_display.iterrows():
+        hover_text = (
+            f"<b>OHLC</b><br>"
+            f"Open: ${row['open']:,.2f} ({row['open_pct']:+.2f}%)<br>"
+            f"High: ${row['high']:,.2f} ({row['high_pct']:+.2f}%)<br>"
+            f"Low: ${row['low']:,.2f} ({row['low_pct']:+.2f}%)<br>"
+            f"Close: ${row['close']:,.2f} ({row['close_pct']:+.2f}%)"
+        )
+        hover_texts.append(hover_text)
+
     fig.add_trace(
         go.Candlestick(
             x=df_display['date'],
@@ -804,37 +899,60 @@ def display_analysis_and_prediction():
             high=df_display['high'],
             low=df_display['low'],
             close=df_display['close'],
-            name='OHLC',
+            name='Price',
             increasing_line_color='#05B169',
             decreasing_line_color='#DF5060',
             increasing_fillcolor='rgba(5, 177, 105, 0.5)',
             decreasing_fillcolor='rgba(223, 80, 96, 0.5)',
-            showlegend=True
+            showlegend=True,
+            text=hover_texts,
+            hoverinfo='text'
         ),
         row=1, col=1
     )
 
-    # Bollinger Bands
+    # Bollinger Bands - TradingView style (blue)
+    # First draw BB Middle as the baseline
+    fig.add_trace(
+        go.Scatter(
+            x=df_display['date'],
+            y=df_display['BB_middle'],
+            mode='lines',
+            name='BB Middle',
+            line=dict(color='#2962FF', width=1.5),
+            showlegend=True,
+            hovertemplate='$%{y:,.2f}<extra></extra>'
+        ),
+        row=1, col=1
+    )
+
+    # BB Upper - fill down to BB Middle (blue band above)
     fig.add_trace(
         go.Scatter(
             x=df_display['date'],
             y=df_display['BB_upper'],
             mode='lines',
             name='BB Upper',
-            line=dict(color='rgba(173, 173, 173, 0.4)', width=1, dash='dash'),
-            showlegend=True
+            line=dict(color='rgba(41, 98, 255, 0)', width=0),  # Invisible line
+            fill='tonexty',
+            fillcolor='rgba(41, 98, 255, 0.1)',  # Light blue fill
+            showlegend=True,
+            hovertemplate='$%{y:,.2f}<extra></extra>'
         ),
         row=1, col=1
     )
 
+    # BB Lower - fill up to BB Middle (blue band below)
+    # Need to add another BB Middle trace for filling
     fig.add_trace(
         go.Scatter(
             x=df_display['date'],
             y=df_display['BB_middle'],
             mode='lines',
-            name='BB Middle (SMA 20)',
-            line=dict(color='#FFA500', width=1.5),
-            showlegend=True
+            name='BB Middle (fill)',
+            line=dict(color='rgba(0, 0, 0, 0)', width=0),  # Invisible
+            showlegend=False,
+            hoverinfo='skip'
         ),
         row=1, col=1
     )
@@ -845,23 +963,25 @@ def display_analysis_and_prediction():
             y=df_display['BB_lower'],
             mode='lines',
             name='BB Lower',
-            line=dict(color='rgba(173, 173, 173, 0.4)', width=1, dash='dash'),
+            line=dict(color='rgba(41, 98, 255, 0)', width=0),  # Invisible line
             fill='tonexty',
-            fillcolor='rgba(173, 173, 173, 0.1)',
-            showlegend=True
+            fillcolor='rgba(41, 98, 255, 0.1)',  # Light blue fill
+            showlegend=True,
+            hovertemplate='$%{y:,.2f}<extra></extra>'
         ),
         row=1, col=1
     )
 
-    # SMAs
+    # SMAs - TradingView style colors
     fig.add_trace(
         go.Scatter(
             x=df_display['date'],
             y=df_display['SMA_50'],
             mode='lines',
             name='SMA 50',
-            line=dict(color='#0052FF', width=1.5, dash='dot'),
-            showlegend=True
+            line=dict(color='#FF9800', width=2),  # Orange/Yellow
+            showlegend=True,
+            hovertemplate='$%{y:,.2f}<extra></extra>'
         ),
         row=1, col=1
     )
@@ -872,8 +992,9 @@ def display_analysis_and_prediction():
             y=df_display['SMA_200'],
             mode='lines',
             name='SMA 200',
-            line=dict(color='#9932CC', width=2, dash='dashdot'),
-            showlegend=True
+            line=dict(color='#9C27B0', width=2),  # Purple
+            showlegend=True,
+            hovertemplate='$%{y:,.2f}<extra></extra>'
         ),
         row=1, col=1
     )
@@ -1012,7 +1133,7 @@ def display_analysis_and_prediction():
         height=chart_height,
         showlegend=True,
         xaxis_rangeslider_visible=False,
-        hovermode='closest',  # Show closest point only - full transparency control
+        hovermode='x unified',  # Show unified hover for all traces at x position
         plot_bgcolor='white',
         paper_bgcolor='white',
         margin=dict(l=0, r=0, t=60, b=0),
@@ -1024,24 +1145,16 @@ def display_analysis_and_prediction():
             x=0,
             font=dict(size=10)
         ),
-        # Hover label styling - highly transparent to see through
+        # Hover label styling - highly transparent to see through (same as overview)
         hoverlabel=dict(
-            bgcolor="rgba(255, 255, 255, 0.5)",  # High transparency - can see through
-            font_size=12,
+            bgcolor="rgba(255, 255, 255, 0.5)",  # High transparency for value box
+            font_size=11,
             font_family="Arial, sans-serif",
             font_color="#050F19",
             bordercolor="rgba(0, 0, 0, 0.3)",
-            align="left",
-            namelength=-1  # Show full trace names
-        ),
-        # Additional settings for better hover behavior
-        hoverdistance=100,  # Pixels to trigger hover
-        spikedistance=1000  # Show spikes even when far from trace
+            align="left"
+        )
     )
-
-    # Adjust subplot titles position - move them down to avoid overlap with date info and legend
-    for annotation in fig['layout']['annotations']:
-        annotation['y'] = annotation['y'] - 0.04  # Move down by 4%
 
     # Update axes dynamically for all rows
     # First row (price chart) sets the x-axis with spike lines
@@ -1173,12 +1286,12 @@ def display_analysis_and_prediction():
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown('<div style="font-size: 1.25rem; font-weight: 600; color: #050F19; margin-bottom: 16px;">Trading Signals</div>', unsafe_allow_html=True)
 
-    latest = df_display.iloc[-1]
+    latest_signal = df_display.iloc[-1]
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        bb_position = "Above Upper" if latest['close'] > latest['BB_upper'] else ("Below Lower" if latest['close'] < latest['BB_lower'] else "Inside Bands")
-        bb_color = "#DF5060" if latest['close'] > latest['BB_upper'] else ("#05B169" if latest['close'] < latest['BB_lower'] else "#0052FF")
+        bb_position = "Above Upper" if latest_signal['close'] > latest_signal['BB_upper'] else ("Below Lower" if latest_signal['close'] < latest_signal['BB_lower'] else "Inside Bands")
+        bb_color = "#DF5060" if latest_signal['close'] > latest_signal['BB_upper'] else ("#05B169" if latest_signal['close'] < latest_signal['BB_lower'] else "#0052FF")
         st.markdown(f"""
         <div class="stat-card">
             <div class="stat-label">Bollinger Bands</div>
@@ -1187,8 +1300,8 @@ def display_analysis_and_prediction():
         """, unsafe_allow_html=True)
 
     with col2:
-        sma_signal = "Bullish" if latest['close'] > latest['SMA_50'] else "Bearish"
-        sma_color = "#05B169" if latest['close'] > latest['SMA_50'] else "#DF5060"
+        sma_signal = "Bullish" if latest_signal['close'] > latest_signal['SMA_50'] else "Bearish"
+        sma_color = "#05B169" if latest_signal['close'] > latest_signal['SMA_50'] else "#DF5060"
         st.markdown(f"""
         <div class="stat-card">
             <div class="stat-label">SMA 50 Signal</div>
@@ -1197,8 +1310,8 @@ def display_analysis_and_prediction():
         """, unsafe_allow_html=True)
 
     with col3:
-        macd_signal = "Bullish" if latest['MACD'] > latest['MACD_signal'] else "Bearish"
-        macd_color = "#05B169" if latest['MACD'] > latest['MACD_signal'] else "#DF5060"
+        macd_signal = "Bullish" if latest_signal['MACD'] > latest_signal['MACD_signal'] else "Bearish"
+        macd_color = "#05B169" if latest_signal['MACD'] > latest_signal['MACD_signal'] else "#DF5060"
         st.markdown(f"""
         <div class="stat-card">
             <div class="stat-label">MACD Signal</div>
@@ -1207,11 +1320,11 @@ def display_analysis_and_prediction():
         """, unsafe_allow_html=True)
 
     with col4:
-        rsi_signal = "Overbought" if latest['RSI'] > 70 else ("Oversold" if latest['RSI'] < 30 else "Neutral")
-        rsi_color = "#DF5060" if latest['RSI'] > 70 else ("#05B169" if latest['RSI'] < 30 else "#0052FF")
+        rsi_signal = "Overbought" if latest_signal['RSI'] > 70 else ("Oversold" if latest_signal['RSI'] < 30 else "Neutral")
+        rsi_color = "#DF5060" if latest_signal['RSI'] > 70 else ("#05B169" if latest_signal['RSI'] < 30 else "#0052FF")
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-label">RSI ({latest['RSI']:.1f})</div>
+            <div class="stat-label">RSI</div>
             <div class="stat-value" style="color: {rsi_color};">{rsi_signal}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -1304,3 +1417,126 @@ def display_market_insights():
     - Year-to-date return: **{ytd_return:+.2f}%**
     - Average daily trading volume: **{avg_volume:,.0f} BTC**
     """)
+
+
+def display_news():
+    """Display latest Bitcoin news from CryptoCompare"""
+
+    inject_coinbase_css()
+
+    st.markdown('<div class="section-header">Latest Bitcoin News</div>', unsafe_allow_html=True)
+
+    # Fetch news
+    with st.spinner("Loading latest news..."):
+        news_articles = fetch_bitcoin_news(limit=15)
+
+    if not news_articles:
+        st.warning("Unable to fetch news at this time. Please try again later.")
+        return
+
+    # Display update time
+    st.markdown(f"""
+    <div style="color: #6B7280; font-size: 0.875rem; margin-bottom: 20px; padding: 8px 12px; background-color: #F9FAFB; border-radius: 6px;">
+        Updated: {datetime.now().strftime('%b %d, %Y %H:%M')}
+    </div>
+    """, unsafe_allow_html=True)
+
+    # News card styling
+    st.markdown("""
+    <style>
+        .news-card {
+            background: white;
+            border: 1px solid #E7EAED;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .news-card:hover {
+            background: #F7F8FA;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .news-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #050F19;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        .news-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.875rem;
+            color: #5B616E;
+            margin-bottom: 12px;
+        }
+        .news-source {
+            font-weight: 600;
+            color: #0052FF;
+        }
+        .news-body {
+            color: #050F19;
+            font-size: 0.9375rem;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        .news-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .news-tag {
+            background: #E3F2FD;
+            color: #0052FF;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Display news articles
+    for article in news_articles:
+        # Extract article info
+        title = article.get('title', 'No title')
+        url = article.get('url', '#')
+        source = article.get('source', 'Unknown')
+        published_on = article.get('published_on', 0)
+        body = article.get('body', '')[:200] + '...' if article.get('body') else ''
+        categories = article.get('categories', '').split('|') if article.get('categories') else []
+
+        # Format time
+        try:
+            from datetime import timezone
+            pub_time = datetime.fromtimestamp(published_on, tz=timezone.utc)
+            time_ago = datetime.now(timezone.utc) - pub_time
+            if time_ago.days > 0:
+                time_str = f"{time_ago.days}d ago"
+            elif time_ago.seconds >= 3600:
+                time_str = f"{time_ago.seconds // 3600}h ago"
+            else:
+                time_str = f"{time_ago.seconds // 60}m ago"
+        except:
+            time_str = "Recently"
+
+        # Create clickable card
+        st.markdown(f"""
+        <a href="{url}" target="_blank" style="text-decoration: none;">
+            <div class="news-card">
+                <div class="news-title">{title}</div>
+                <div class="news-meta">
+                    <span class="news-source">{source}</span>
+                    <span>•</span>
+                    <span>{time_str}</span>
+                </div>
+                <div class="news-body">{body}</div>
+                <div class="news-tags">
+                    {''.join([f'<span class="news-tag">{cat}</span>' for cat in categories[:3]])}
+                </div>
+            </div>
+        </a>
+        """, unsafe_allow_html=True)
