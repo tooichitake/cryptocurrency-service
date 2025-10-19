@@ -413,7 +413,7 @@ def display_overview():
         ),
         plot_bgcolor='white',
         paper_bgcolor='white',
-        hovermode='closest',  # Show closest point only - full transparency control
+        hovermode='x unified',  # Unified hover mode for better info display
         showlegend=False,
         hoverlabel=dict(
             bgcolor="rgba(255, 255, 255, 0.5)",  # High transparency for value box
@@ -422,7 +422,10 @@ def display_overview():
             font_color="#050F19",
             bordercolor="rgba(0, 0, 0, 0.3)",
             align="left"
-        )
+        ),
+        # Additional settings for better hover behavior
+        hoverdistance=100,  # Pixels to trigger hover
+        spikedistance=1000  # Show spikes even when far from trace
     )
 
     # Apply transparent hover label to all traces (for name labels)
