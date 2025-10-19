@@ -389,10 +389,10 @@ def display_overview():
             title=None,
             tickformat='%b %d',
             showspikes=True,
-            spikemode='across',
+            spikemode='across+toaxis',
             spikesnap='cursor',
-            spikedash='dot',
-            spikecolor='rgba(0, 0, 0, 0.3)',
+            spikedash='solid',
+            spikecolor='rgba(0, 0, 0, 0.5)',
             spikethickness=1
         ),
         yaxis=dict(
@@ -405,10 +405,10 @@ def display_overview():
             tickprefix='$',
             tickformat=',.0f',
             showspikes=True,
-            spikemode='across',
+            spikemode='across+toaxis',
             spikesnap='cursor',
-            spikedash='dot',
-            spikecolor='rgba(0, 0, 0, 0.3)',
+            spikedash='solid',
+            spikecolor='rgba(0, 0, 0, 0.5)',
             spikethickness=1
         ),
         plot_bgcolor='white',
@@ -424,8 +424,8 @@ def display_overview():
             align="left"
         ),
         # Additional settings for better hover behavior
-        hoverdistance=100,  # Pixels to trigger hover
-        spikedistance=1000  # Show spikes even when far from trace
+        hoverdistance=-1,  # Always show hover for any point in x unified mode
+        spikedistance=-1  # Always show spikes regardless of distance
     )
 
     # Apply transparent hover label to all traces (for name labels)
