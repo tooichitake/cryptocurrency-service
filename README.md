@@ -278,13 +278,7 @@ This project is for educational purposes as part of UTS coursework.
 
 ## Links
 
-- **Experiment Repository**: https://github.com/your-group/36120-25SP-group4-AT3-experiment
-- **Streamlit Repository**: https://github.com/your-group/crypto-streamlit-dashboard
-- **FastAPI Repositories**:
-  - Student 1: https://github.com/student1/bitcoin-prediction-api
-  - Student 2: [URL]
-  - Student 3: [URL]
-  - Student 4: [URL]
+- **Main Repository**: https://github.com/tooichitake/cryptocurrency-service
 - **Live Dashboard**: https://your-app.streamlit.app
 - **Live APIs**:
   - Bitcoin: https://bitcoin-api.onrender.com
