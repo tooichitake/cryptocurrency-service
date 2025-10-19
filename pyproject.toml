@@ -1,0 +1,104 @@
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crypto-investment-dashboard"
+version = "1.0.0"
+description = "Cryptocurrency investment dashboard with ML-based price predictions"
+readme = "README.md"
+requires-python = ">=3.11.4"
+license = {text = "MIT"}
+authors = [
+    {name = "Group 4", email = "group4@student.uts.edu.au"}
+]
+keywords = ["cryptocurrency", "bitcoin", "machine-learning", "streamlit", "data-science"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Education",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    # Web frameworks
+    "streamlit==1.36.0",
+    "fastapi==0.111.0",
+    "uvicorn==0.30.1",
+
+    # Data processing
+    "pandas==2.2.2",
+    "numpy>=1.26.0",
+
+    # Machine Learning
+    "scikit-learn==1.5.1",
+    "joblib==1.4.2",
+    "torch==2.8.0",
+    "xgboost==2.1.0",
+    "lightgbm==4.4.0",
+
+    # Technical Analysis
+    "pandas-ta-classic==0.3.36",
+
+    # Visualization
+    "plotly==6.3.1",
+    "matplotlib>=3.9.0",
+    "seaborn>=0.13.0",
+    "altair>=5.0.0",
+
+    # Scientific computing
+    "scipy>=1.13.0",
+    "sympy>=1.12",
+    "PyWavelets>=1.6.0",
+
+    # Time series
+    "sktime>=0.30.0",
+
+    # Deep learning utilities
+    "einops>=0.8.0",
+    "local-attention>=1.9.14",
+    "reformer-pytorch>=1.4.4",
+
+    # Hyperparameter optimization
+    "hyperopt==0.2.7",
+
+    # Explainability
+    "lime==0.2.0.1",
+
+    # HTTP and API
+    "requests>=2.31.0",
+    "python-multipart>=0.0.6",
+
+    # Utilities
+    "tqdm>=4.66.0",
+
+    # Monitoring
+    "wandb==0.17.4",
+    "tensorboard>=2.16.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "jupyterlab==4.2.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/crypto-dashboard"
+Repository = "https://github.com/your-org/crypto-dashboard"
+Documentation = "https://github.com/your-org/crypto-dashboard#readme"
+
+[tool.setuptools]
+packages = ["app", "students"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"

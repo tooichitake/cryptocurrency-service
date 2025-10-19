@@ -1,0 +1,18 @@
+# Streamlit App Requirements for Cryptocurrency Dashboard
+# Python 3.11.4
+
+# Core Streamlit
+streamlit==1.36.0
+
+# Data manipulation and analysis
+pandas==2.2.2
+numpy>=1.24.0
+
+# Visualization
+plotly>=5.14.0
+
+# HTTP requests for API calls
+requests>=2.31.0
+
+# Optional: For improved performance and caching
+altair>=5.0.0

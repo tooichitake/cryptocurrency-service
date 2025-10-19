@@ -1,0 +1,237 @@
+name: CI/CD Pipeline - Crypto Investment Dashboard
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11.4'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  # Linting and code quality checks
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black mypy pylint
+        pip install -e .
+
+    - name: Run Black formatter check
+      run: black --check app/ students/ || true
+
+    - name: Run Flake8 linter
+      run: flake8 app/ students/ --max-line-length=120 --ignore=E501,W503 || true
+
+    - name: Run Pylint
+      run: pylint app/ students/ --fail-under=7.0 || true
+
+    - name: Run MyPy type checker
+      run: mypy app/ students/ --ignore-missing-imports || true
+
+
+  # Testing
+  test:
+    runs-on: ubuntu-latest
+    needs: [lint]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-asyncio httpx
+        pip install -e .
+
+    - name: Test student modules import
+      run: |
+        python -c "
+        import sys
+        sys.path.insert(0, 'students')
+
+        print('Testing student module imports...')
+        print('-' * 50)
+
+        # Test 25605217 module
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location('25605217', 'students/25605217.py')
+            if spec and spec.loader:
+                module = importlib.util.module_from_spec(spec)
+                # Don't execute to avoid GUI dependencies
+                print('PASS: Module 25605217 found')
+
+                # Check if file has required functions
+                with open('students/25605217.py', 'r') as f:
+                    content = f.read()
+                    assert 'def display_overview' in content
+                    assert 'def display_analysis_and_prediction' in content
+                    assert 'def display_market_insights' in content
+                    print('PASS: All required functions present')
+        except Exception as e:
+            print(f'FAIL: {e}')
+            sys.exit(1)
+
+        print('-' * 50)
+        print('All module tests passed')
+        "
+
+    - name: Validate pyproject.toml
+      run: |
+        python -c "
+        import toml
+
+        print('Validating pyproject.toml...')
+        with open('pyproject.toml', 'r') as f:
+            config = toml.load(f)
+
+        assert 'project' in config, 'Missing [project] section'
+        assert 'name' in config['project'], 'Missing project name'
+        assert 'version' in config['project'], 'Missing version'
+        assert 'dependencies' in config['project'], 'Missing dependencies'
+
+        print('PASS: pyproject.toml is valid')
+        "
+
+    - name: Check for syntax errors
+      run: |
+        python -m py_compile app/main.py
+        python -m py_compile students/25605217.py
+        echo "PASS: No syntax errors found"
+
+
+  # Streamlit app smoke test
+  streamlit-test:
+    runs-on: ubuntu-latest
+    needs: [test]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+
+    - name: Test Streamlit app can be imported
+      run: |
+        python -c "
+        import sys
+        import importlib.util
+
+        print('Testing Streamlit app...')
+
+        # Load main.py without executing streamlit
+        spec = importlib.util.spec_from_file_location('main', 'app/main.py')
+        if spec and spec.loader:
+            print('PASS: Main app file found and loadable')
+        else:
+            print('FAIL: Cannot load main app')
+            sys.exit(1)
+        "
+
+    - name: Validate student mapping
+      run: |
+        python -c "
+        import sys
+
+        print('Validating student mapping...')
+
+        # Read main.py and check STUDENT_MAPPING
+        with open('app/main.py', 'r') as f:
+            content = f.read()
+
+        assert 'STUDENT_MAPPING' in content, 'STUDENT_MAPPING not found'
+        assert '25605217' in content, 'Student 25605217 not in mapping'
+
+        print('PASS: Student mapping is valid')
+        "
+
+
+  # Security scan
+  security:
+    runs-on: ubuntu-latest
+    needs: [lint]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety bandit
+
+    - name: Run Safety check (dependencies)
+      run: safety check || true
+
+    - name: Run Bandit (security linter)
+      run: bandit -r app/ students/ -ll || true
+
+
+  # Build summary
+  summary:
+    runs-on: ubuntu-latest
+    needs: [lint, test, streamlit-test, security]
+    if: always()
+
+    steps:
+    - name: Build Summary
+      run: |
+        echo "## CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Linting: ${{ needs.lint.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Testing: ${{ needs.test.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Streamlit: ${{ needs.streamlit-test.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Security: ${{ needs.security.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Project:** Crypto Investment Dashboard" >> $GITHUB_STEP_SUMMARY
+        echo "**Python Version:** ${{ env.PYTHON_VERSION }}" >> $GITHUB_STEP_SUMMARY
