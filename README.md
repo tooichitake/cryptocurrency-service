@@ -5,7 +5,7 @@
 [![CI/CD Pipeline](https://github.com/tooichitake/cryptocurrency-service/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/tooichitake/cryptocurrency-service/actions/workflows/ci-cd.yml)
 [![Python](https://img.shields.io/badge/Python-3.11.4-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.36.0-red.svg)](https://streamlit.io/)
-[![License](https://img.shields.io/badge/License-Educational-green.svg)](#license)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
@@ -50,6 +50,7 @@ cryptocurrency-service/
 ├── requirements.txt               # Python dependencies
 ├── pyproject.toml                 # Project configuration
 ├── Dockerfile                     # Docker configuration
+├── LICENSE                        # MIT License
 └── README.md                      # This file
 ```
 
@@ -195,7 +196,9 @@ flake8 app/ students/
 
 ## 📄 License
 
-This project is for educational purposes only.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+This software is provided for educational and research purposes.
 
 ## 🔗 Links
 
