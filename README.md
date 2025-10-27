@@ -2,6 +2,7 @@
 
 > A comprehensive Streamlit application for cryptocurrency analysis and ML-based price predictions.
 
+[![CI/CD Pipeline](https://github.com/tooichitake/cryptocurrency-service/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/tooichitake/cryptocurrency-service/actions/workflows/ci-cd.yml)
 [![Python](https://img.shields.io/badge/Python-3.11.4-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.36.0-red.svg)](https://streamlit.io/)
 [![License](https://img.shields.io/badge/License-Educational-green.svg)](#license)
