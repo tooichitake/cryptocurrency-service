@@ -5,14 +5,15 @@ Model: Linear Regression
 Cryptocurrency: Bitcoin (BTC)
 """
 
-import streamlit as st
-import requests
-import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
+
 import numpy as np
+import pandas as pd
 import pandas_ta_classic as ta
+import plotly.graph_objects as go
+import requests
+import streamlit as st
+from plotly.subplots import make_subplots
 
 # Configuration
 FASTAPI_URL = "https://bitcoin-prediction-api-v951.onrender.com"
