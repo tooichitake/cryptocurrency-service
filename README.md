@@ -26,9 +26,9 @@ This dashboard provides data-driven insights for cryptocurrency investors, featu
 | Cryptocurrency | Status | ML Prediction |
 |----------------|--------|---------------|
 | 🟠 Bitcoin (BTC) | ✅ Active | ✅ Available |
-| 🔵 Ethereum (ETH) | 🔜 Coming soon | - |
+| 🔵 Ethereum (ETH) | ✅ Active | ✅ Available |
 | ⚪ XRP | 🔜 Coming soon | - |
-| 🟣 Solana (SOL) | 🔜 Coming soon | - |
+| 🟣 Solana (SOL) | ✅ Active | ✅ Available |
 
 ### 📊 Analysis Tools
 
@@ -46,7 +46,9 @@ cryptocurrency-service/
 ├── app/
 │   └── main.py                    # Main Streamlit application
 ├── students/
-│   └── 25605217.py                # Bitcoin analysis module
+│   ├── 25605217.py                # Bitcoin analysis module
+│   ├── 25235490.py                # Ethereum analysis module
+│   └── 25657673.py                # Solana analysis module
 ├── requirements.txt               # Python dependencies
 ├── pyproject.toml                 # Project configuration
 ├── Dockerfile                     # Docker configuration
@@ -106,7 +108,6 @@ docker run -p 8501:8501 crypto-dashboard
 The application uses a modular architecture:
 
 - **Streamlit Frontend**: Interactive dashboard for data visualization
-- **ML Models**: Linear Regression model for Bitcoin price prediction
 - **Data Pipeline**: Real-time data fetching from CryptoCompare API
 - **Prediction API**: External RESTful API for model predictions
 

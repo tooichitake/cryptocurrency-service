@@ -16,7 +16,7 @@ students_path = Path(__file__).parent.parent / "students"
 sys.path.insert(0, str(students_path))
 
 # Student ID mapping to cryptocurrencies
-STUDENT_MAPPING = {"bitcoin": "25605217", "ethereum": None, "xrp": None, "solana": None}
+STUDENT_MAPPING = {"bitcoin": "25605217", "ethereum": "25235490", "xrp": None, "solana": "25657673"}
 
 # Configure page
 st.set_page_config(
@@ -33,7 +33,7 @@ if "selected_crypto" not in st.session_state:
 
 @st.cache_data(ttl=60)
 def fetch_crypto_prices():
-    """Fetch real-time cryptocurrency prices from CryptoCompare API"""
+    """Fetch real-time cryptocurrency prices from CryptoCompare API with CoinGecko fallback"""
     try:
         # Fetch multiple crypto prices at once
         response = requests.get(
@@ -45,12 +45,49 @@ def fetch_crypto_prices():
         data = response.json()
 
         if data.get("Response") == "Error":
-            return None
+            raise Exception("CryptoCompare API returned an error")
 
         return data.get("RAW", {})
     except Exception as e:
-        st.error(f"Error fetching prices: {str(e)}")
-        return None
+        try:
+            response = requests.get(
+                "https://api.coingecko.com/api/v3/simple/price",
+                params={
+                    "ids": "bitcoin,ethereum,ripple,solana",
+                    "vs_currencies": "usd",
+                    "include_market_cap": "true",
+                    "include_24hr_vol": "true",
+                    "include_24hr_change": "true",
+                },
+                timeout=10,
+            )
+            response.raise_for_status()
+            coingecko_data = response.json()
+
+            crypto_map = {
+                "bitcoin": "BTC",
+                "ethereum": "ETH",
+                "ripple": "XRP",
+                "solana": "SOL",
+            }
+
+            formatted_data = {}
+            for coin_id, symbol in crypto_map.items():
+                if coin_id in coingecko_data:
+                    coin_data = coingecko_data[coin_id]
+                    formatted_data[symbol] = {
+                        "USD": {
+                            "PRICE": coin_data.get("usd", 0),
+                            "CHANGEPCT24HOUR": coin_data.get("usd_24h_change", 0),
+                            "MKTCAP": coin_data.get("usd_market_cap", 0),
+                            "VOLUME24HOURTO": coin_data.get("usd_24h_vol", 0),
+                        }
+                    }
+
+            return formatted_data
+        except Exception as fallback_error:
+            st.error(f"Error fetching prices: {str(e)}, Fallback error: {str(fallback_error)}")
+            return None
 
 
 # ==================== HOME PAGE (Coinbase-style List) ====================
@@ -74,7 +111,7 @@ if st.session_state.selected_crypto is None:
             "symbol": "ETH",
             "icon": "https://www.cryptocompare.com/media/37746238/eth.png",
             "key": "ethereum",
-            "student_id": None,
+            "student_id": "25235490",
         },
         {
             "name": "XRP",
@@ -88,7 +125,7 @@ if st.session_state.selected_crypto is None:
             "symbol": "SOL",
             "icon": "https://www.cryptocompare.com/media/37747734/sol.png",
             "key": "solana",
-            "student_id": None,
+            "student_id": "25657673",
         },
     ]
 
